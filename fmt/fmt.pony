@@ -1,6 +1,6 @@
 
 primitive Fmt
-  fun apply(fmt: String box, args: (ReadSeq[Stringable] | None) = None):
+  fun apply(fmt: String box, args: (ReadSeq[Stringable] box | None) = None):
     String iso^
   =>
     let args' = match args
@@ -8,47 +8,37 @@ primitive Fmt
     else Array[Stringable]
     end
 
-    var s = recover String end
+    let out = recover String end
     var i: USize = 0
-    var default: USize = 0
     while i < fmt.size() do
-      let c = try fmt(i) else '' end
-      if c == '{' then
-        (i, default, s) = _parse_fmt(consume s, args', fmt, i+1, default)
+      try
+        let c = fmt(i)
+        match c
+        | '{' =>
+          match fmt(i+1)
+          | '{' =>
+            out.push('{')
+            i = i + 1
+          else
+            let fmt_to = fmt.find("}", i.isize())
+            let parser = _FmtParser(fmt.substring(i.isize(), fmt_to), args')
+            out.append(parser.parse())
+            i = fmt_to.usize()
+          end
+        | '}' =>
+          match fmt(i+1)
+          | '}' =>
+            out.push('}')
+            i = i + 1
+          else
+            error
+          end
+        else
+          out.push(c)
+        end
       else
-        s.push(c)
-        i = i + 1
+        out.push('?')
       end
+      i = i + 1
     end
-    consume s
-
-  fun _parse_fmt(s: String iso, args: ReadSeq[Stringable], fmt: String box,
-    offset: USize, default: USize): (USize, USize, String iso^)
-  =>
-    let c = try fmt(offset) else '' end
-    match c
-    | '{' =>
-      s.push(c)
-      (offset+1, default, consume s)
-    | '}' =>
-      try s.append(args(default).string()) end
-      (offset+1, default+1, consume s)
-    else
-      _parse_ident(consume s, args, fmt, offset, default)
-    end
-
-  fun _parse_ident(s: String iso, args: ReadSeq[Stringable], fmt: String box,
-    offset: USize, default: USize): (USize, USize, String iso^)
-  =>
-    var offset' = offset
-    try
-      (let ident, let used) = fmt.read_int[USize](offset'.isize(), 10)
-      s.append(args(ident).string())
-      offset' = offset' + (used + 1)
-    end
-
-    let c = try fmt(offset') else '' end
-    match c
-    | ':' => (offset', default, consume s)//_parse_spec(consume s, args, fmt, offset', default)
-    else (offset', default, consume s)
-    end
+    out
