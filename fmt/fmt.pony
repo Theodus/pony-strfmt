@@ -10,6 +10,7 @@ primitive Fmt
 
     let out = recover String end
     var i: USize = 0
+    var default: USize = 0
     while i < fmt.size() do
       try
         let c = fmt(i)
@@ -20,10 +21,32 @@ primitive Fmt
             out.push('{')
             i = i + 1
           else
-            let fmt_to = fmt.find("}", i.isize())
-            let parser = _FmtParser(fmt.substring(i.isize(), fmt_to), args')
-            out.append(parser.parse())
-            i = fmt_to.usize()
+            let arg = try
+              (let a, let u) = fmt.read_int[USize](i.isize()+1)
+              if u == 0 then
+                error
+              else
+                i = i + (u + 1)
+                a
+              end
+            else
+              default = default + 1
+              i = i + 1
+              args'(default-1)
+            end
+
+            match fmt(i)
+            | ':' =>
+              let spec_from = i.isize() + 1
+              let spec_to = fmt.find("}", i.isize())
+              let format = _Format(fmt.substring(spec_from, spec_to), arg)
+              out.append(format())
+              i = spec_to.usize()
+            | '}' =>
+              out.append(arg.string())
+            else
+              error
+            end
           end
         | '}' =>
           match fmt(i+1)

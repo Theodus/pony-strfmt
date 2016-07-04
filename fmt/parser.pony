@@ -1,7 +1,20 @@
+/*
+fmt := '{' [arg] [':' spec] '}'
+arg := USize
+spec := [align] [sign] [alt] [width] [prec] [type]
+align := [U8] ('<' | '^' | '>')
+sign := ('+' | '-' | ' ')
+alt := '#'
+width := USize
+prec := '.' USize
+type := ('b' | 'd' | 'f' | 'o' | 'x' | 'X')
+*/
 
-class _FmtParser
-  let _fmt: String box
-  let _args: ReadSeq[Stringable] box
+use "debug"
+
+class _Format
+  let _spec: String box
+  let _arg: Stringable box
   var _offset: USize = 0
   var _default: USize = 0
 
@@ -12,19 +25,40 @@ class _FmtParser
   var _width: USize = -1
   var _prec: USize = 0
 
-  new create(fmt: String box, args: ReadSeq[Stringable] box) =>
-    _fmt = fmt
-    _args = args
+  new create(spec: String box, arg: Stringable box) =>
+    _spec = spec
+    _arg = arg
 
-  fun ref parse(): String iso^ ? =>
+  fun ref apply(): String iso^ ? =>
+    let out = recover String end
+    Debug.out("\n"+_spec)
+    Debug.out(_arg)
+    parse_align()
+    out
+
+  // [U8] ('<' | '^' | '>')
+  fun ref parse_align() ? =>
+    parse_sign()
+
+  // ('+' | '-' | ' ')
+  fun ref parse_sign() ? =>
+    parse_alt()
+
+  // '#'
+  fun ref parse_alt() ? =>
+    parse_width()
+
+  // USize
+  fun ref parse_width() ? =>
+    parse_prec()
+
+  // '.' USize
+  fun ref parse_prec() ? =>
+    parse_type()
+
+  // ('b' | 'd' | 'f' | 'o' | 'x' | 'X')
+  fun ref parse_type() ? =>
     error
-
-  fun ref _next(): U8 ? =>
-    _offset = _offset + 1
-    _fmt(_offset-1)
-
-  fun ref _backup() =>
-    _offset = _offset - 1
 
 primitive _AlignLeft
 primitive _AlignRight
