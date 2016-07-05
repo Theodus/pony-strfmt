@@ -19,7 +19,7 @@ class _Format
 
   var _fill: U8 = ' '
   var _align: _Align = _AlignLeft
-  var _sign: U8 = ''
+  var _sign: U8 = '-'
   var _alt: Bool = false
   var _width: USize = 0
   var _prec: USize = 0
@@ -94,7 +94,7 @@ class _Format
       _sign = '+'
       _offset = _offset + 1
     | '-' =>
-      _sign = ''
+      _sign = '-'
       _offset = _offset + 1
     | ' ' =>
       _sign = ' '
@@ -228,16 +228,38 @@ class _Format
         try out.push(table(index.usize())) end
       end
     end
-    out.append(pre)
-    out.reverse_in_place()
     while out.size() < _prec do
       out.push('0')
     end
+    out.append(pre)
+    out.reverse_in_place()
 
     _format_s(consume out)
 
   fun _format_f(x: F64): String iso^ =>
-    let out = recover String end
+    let width = _width
+    let prec = if _prec == 0 then 4 else _prec end
+    let out = recover String((prec+1).max(width.max(31))) end
+    if (x >= 0) and (_sign != '-') then
+      out.push(_sign)
+    end
+    out.append(x.string())
+    try
+      let dec = out.substring(out.find(".")+1)
+      var i = dec.size()
+      if i < prec then
+        while i < prec do
+          out.push('0')
+          i = i + 1
+        end
+      else
+        while i > prec do
+          out.pop()
+          i = i - 1
+        end
+      end
+    end
+
     _format_s(consume out)
 
 primitive _AlignLeft
