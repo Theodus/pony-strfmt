@@ -14,7 +14,7 @@ use "debug"
 
 class _Format
   let _spec: String box
-  let _arg: Stringable box
+  let _arg: (String | Number)
   var _offset: USize = 0
 
   var _fill: U8 = ' '
@@ -25,17 +25,33 @@ class _Format
   var _prec: USize = 0
   var _type: U8 = 's'
 
-  new create(spec: String box, arg: Stringable box) =>
+  new create(spec: String box, arg: (String | Number))
+  =>
     _spec = spec
     _arg = arg
 
   fun ref apply(): String iso^ ? =>
     parse_align()
-    match _type
-    | 's' => _format_s()
-    | 'f' => _format_f()
+    match _arg
+    | let s: String => _format_s(s)
+    | let n: I8 => _format_i(n.u128(), n < 0)
+    | let n: I16 => _format_i(n.u128(), n < 0)
+    | let n: I32 => _format_i(n.u128(), n < 0)
+    | let n: I64 => _format_i(n.u128(), n < 0)
+    | let n: I128 => _format_i(n.u128(), n < 0)
+    | let n: ILong => _format_i(n.u128(), n < 0)
+    | let n: ISize => _format_i(n.u128(), n < 0)
+    | let n: U8 => _format_i(n.u128(), true)
+    | let n: U16 => _format_i(n.u128(), true)
+    | let n: U32 => _format_i(n.u128(), true)
+    | let n: U64 => _format_i(n.u128(), true)
+    | let n: U128 => _format_i(n.u128(), true)
+    | let n: ULong => _format_i(n.u128(), true)
+    | let n: USize => _format_i(n.u128(), true)
+    | let n: F32 => _format_f(n.f64())
+    | let n: F64 => _format_f(n)
     else
-      _format_i()
+      error
     end
 
   // [U8] ('<' | '^' | '>')
@@ -124,19 +140,18 @@ class _Format
   fun ref parse_type() ? =>
     let c = try _spec(_offset) else 's' end
     match c
-    | 'b' => _type = c
-    | 'd' => _type = c
-    | 'f' => _type = c
-    | 'o' => _type = c
-    | 'x' => _type = c
-    | 'X' => _type = c
-    | 's' => _type = c
+    | 'b' => _type = 'b'
+    | 'd' => _type = 'd'
+    | 'f' => _type = 'f'
+    | 'o' => _type = 'o'
+    | 'x' => _type = 'x'
+    | 'X' => _type = 'X'
+    | 's' => _type = 's'
     else
       error
     end
 
-  fun _format_s(): String iso^ =>
-    let arg = _arg.string()
+  fun _format_s(arg: String): String iso^ =>
     if arg.size() < _width then
       let w = _width
       let out = recover String(w) end
@@ -171,16 +186,59 @@ class _Format
       end
       out
     else
-      consume arg
+      recover
+        let out = String(arg.size())
+        out.append(arg)
+      end
     end
 
-  fun _format_f(): String iso^ =>
-    let out = recover String end
-    out
+  fun _format_i(x: U128, neg: Bool): String iso^ =>
+    let table = match _type
+    | 'X' => "0123456789ABCDEF"
+    else "0123456789abcdef"
+    end
+    let base: U128 = match _type
+    | 'b' => 2
+    | 'o' => 8
+    | 'x' => 16
+    | 'X' => 16
+    else 10
+    end
+    var pre = if _alt then
+      match base
+      | 2 => "b0"
+      | 8 => "o0"
+      | 16 => "x0"
+      else ""
+      end
+    else
+      ""
+    end
+    if not neg then pre = _sign.string() + pre end
 
-  fun _format_i(): String iso^ =>
+    (let prec, let width) = (_prec, _width)
+    let out = recover String((prec+1).max(width.max(31))) end
+
+    var value = x
+    if value == 0 then
+      out.push('0')
+    else
+      while value != 0 do
+        let index = ((value = value / base) - (value * base))
+        try out.push(table(index.usize())) end
+      end
+    end
+    out.append(pre)
+    out.reverse_in_place()
+    while out.size() < _prec do
+      out.push('0')
+    end
+
+    _format_s(consume out)
+
+  fun _format_f(x: F64): String iso^ =>
     let out = recover String end
-    out
+    _format_s(consume out)
 
 primitive _AlignLeft
 primitive _AlignRight

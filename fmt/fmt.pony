@@ -1,11 +1,11 @@
 
 primitive Fmt
-  fun apply(fmt: String box, args: (ReadSeq[Stringable] box | None) = None):
+  fun apply(fmt: String box, args: (ReadSeq[(String | Number)] | None) = None):
     String iso^
   =>
     let args' = match args
-    | let rs: ReadSeq[Stringable] => rs
-    else Array[Stringable]
+    | let rs: ReadSeq[(String | Number)] => rs
+    else Array[(String | Number)]
     end
 
     let out = recover String end
@@ -27,7 +27,7 @@ primitive Fmt
                 error
               else
                 i = i + (u + 1)
-                a
+                args'(a)
               end
             else
               default = default + 1
