@@ -1,5 +1,7 @@
 # pony-fmt
 
+based on Python's [.format()](https://pyformat.info/#simple) and [Rust's](https://doc.rust-lang.org/std/fmt/)
+
 The grammar for the syntax is as follows:
 ```
 fmt := '{' [arg] [':' spec] '}'
