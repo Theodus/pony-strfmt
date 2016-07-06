@@ -10,8 +10,6 @@ prec := '.' USize
 type := ('b' | 'd' | 'f' | 'o' | 'x' | 'X')
 */
 
-use "debug"
-
 class _Format
   let _spec: String box
   let _arg: (String | Number)
@@ -118,7 +116,7 @@ class _Format
       (let w, let u) = _spec.read_int[USize](_offset.isize())
       if u != 0 then
         _width = w
-        _offset = _offset + (u + 1)
+        _offset = _offset + u
       end
     end
     parse_prec()
